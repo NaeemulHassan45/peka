@@ -1,0 +1,53 @@
+.pin-modal {
+  max-width: 420px;
+}
+
+.pin-modal-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  text-align: center;
+}
+
+.pin-modal-icon {
+  width: 48px;
+  height: 48px;
+  opacity: 0.9;
+}
+
+.pin-modal-header h2 {
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: #ffffff;
+  margin: 0;
+}
+
+.pin-modal-description {
+  font-size: 0.95rem;
+  color: #d0d0d0;
+  line-height: 1.6;
+  text-align: center;
+  margin: 0;
+}
+
+.pin-modal-description strong {
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.pin-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.pin-modal-form .form-group input {
+  text-align: center;
+  font-size: 1.5rem;
+  letter-spacing: 0.5em;
+  font-weight: 500;
+  padding: 1rem;
+}
+

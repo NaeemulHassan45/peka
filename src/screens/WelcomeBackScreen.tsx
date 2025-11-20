@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
+import DeleteVaultConfirmModal from "../components/DeleteVaultConfirmModal";
 import { deleteVault, openVault } from "../services/vaultService";
 import { VaultContext, VaultSummary } from "../types";
 import vaultIcon from "../assets/vault.svg";
@@ -22,6 +23,7 @@ export default function WelcomeBackScreen({
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const handleUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +59,15 @@ export default function WelcomeBackScreen({
     }
   };
 
-  const handleDelete = async () => {
+  const handleDeleteClick = () => {
+    if (!vault || isUnlocking) {
+      return;
+    }
+    setIsDeleteModalOpen(true);
+    setDeleteError(null);
+  };
+
+  const handleDeleteConfirm = async () => {
     if (!vault || isDeleting) {
       return;
     }
@@ -65,6 +75,7 @@ export default function WelcomeBackScreen({
     setDeleteError(null);
     try {
       await deleteVault({ path: vault.path });
+      setIsDeleteModalOpen(false);
       onVaultDeleted(vault.path);
     } catch (err) {
       console.error(err);
@@ -181,7 +192,7 @@ export default function WelcomeBackScreen({
         <motion.button
           type="button"
           className="delete-vault-button"
-          onClick={handleDelete}
+          onClick={handleDeleteClick}
           disabled={!vault || isUnlocking || isDeleting}
           whileHover={
             !isDeleting && !isUnlocking && vault
@@ -193,9 +204,24 @@ export default function WelcomeBackScreen({
           }
           transition={{ duration: 0.15, ease: "easeOut" }}
         >
-          {isDeleting ? "Deleting..." : "Delete Vault"}
+          Delete Vault
         </motion.button>
       </div>
+
+      {vault && (
+        <DeleteVaultConfirmModal
+          isOpen={isDeleteModalOpen}
+          vaultName={vault.vaultName}
+          isDeleting={isDeleting}
+          onClose={() => {
+            if (!isDeleting) {
+              setIsDeleteModalOpen(false);
+              setDeleteError(null);
+            }
+          }}
+          onConfirm={handleDeleteConfirm}
+        />
+      )}
     </div>
   );
 }

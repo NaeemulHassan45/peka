@@ -80,6 +80,25 @@
   cursor: not-allowed;
 }
 
+.exit-vault-button {
+  padding: 0.6rem 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  font-family: "Poppins", sans-serif;
+  color: #ff8a8a;
+  background-color: transparent;
+  border: 1px solid #ff8a8a;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.exit-vault-button:hover {
+  background-color: rgba(255, 138, 138, 0.1);
+  border-color: #ff6666;
+  color: #ff6666;
+}
+
 .vault-export-feedback {
   font-size: 0.9rem;
   margin-top: -0.5rem;

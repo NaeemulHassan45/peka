@@ -53,6 +53,12 @@ struct CreateVaultResult {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
+struct ImportVaultResult {
+    path: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 struct VaultSummary {
     path: String,
     vault_name: String,
@@ -747,6 +753,73 @@ fn verify_folder_pin_inner(
     }
 }
 
+#[tauri::command]
+#[allow(non_snake_case)]
+async fn import_vault(
+    sourcePath: String,
+    vaultName: String,
+    masterPassword: String,
+) -> Result<ImportVaultResult, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        import_vault_inner(&sourcePath, &vaultName, &masterPassword)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+fn import_vault_inner(
+    source_path: &str,
+    vault_name: &str,
+    master_password: &str,
+) -> Result<ImportVaultResult, String> {
+    let trimmed_vault_name = vault_name.trim();
+    if trimmed_vault_name.is_empty() {
+        return Err("Vault name cannot be empty".to_string());
+    }
+
+    if master_password.trim().is_empty() {
+        return Err("Master password cannot be empty".to_string());
+    }
+
+    let source = PathBuf::from(source_path);
+    if !source.exists() {
+        return Err("Source vault file not found".to_string());
+    }
+
+    if source
+        .extension()
+        .and_then(|ext| ext.to_str())
+        != Some("peka")
+    {
+        return Err("Source file must be a .peka vault file".to_string());
+    }
+
+    // Validate the master password by trying to decrypt the vault
+    let (_vault_file, _payload) = decrypt_vault(source_path, master_password)
+        .map_err(|e| format!("Failed to decrypt vault: {}", e))?;
+
+    // If decryption succeeded, copy the file to the app data directory
+    let base_dir = resolve_vault_directory()?;
+    fs::create_dir_all(&base_dir).map_err(|e| e.to_string())?;
+
+    let file_name = format!("{}.peka", sanitize_file_name(trimmed_vault_name));
+    let destination_path = base_dir.join(&file_name);
+
+    // Check if a vault with this name already exists
+    if destination_path.exists() {
+        return Err(format!(
+            "A vault with the name '{}' already exists",
+            trimmed_vault_name
+        ));
+    }
+
+    fs::copy(source_path, &destination_path).map_err(|e| e.to_string())?;
+
+    Ok(ImportVaultResult {
+        path: destination_path.to_string_lossy().to_string(),
+    })
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -763,7 +836,8 @@ pub fn run() {
             export_vault_file,
             delete_folder,
             add_credential,
-            delete_credential
+            delete_credential,
+            import_vault
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

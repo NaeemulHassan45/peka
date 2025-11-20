@@ -2,6 +2,7 @@ export type Screen =
   | "welcome"
   | "welcomeBack"
   | "masterPasswordSetup"
+  | "importVault"
   | "vault";
 
 export interface ValidationResult {
@@ -97,4 +98,14 @@ export interface AddCredentialPayload {
   identifier: string;
   username: string;
   password: string;
+}
+
+export interface ImportVaultPayload {
+  sourcePath: string;
+  vaultName: string;
+  masterPassword: string;
+}
+
+export interface ImportVaultResponse {
+  path: string;
 }

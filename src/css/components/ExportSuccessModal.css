@@ -1,0 +1,38 @@
+.export-success-modal {
+  max-width: 420px;
+  text-align: center;
+}
+
+.export-success-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.export-success-icon {
+  width: 64px;
+  height: 64px;
+  opacity: 0.9;
+}
+
+.export-success-header h2 {
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: #ffffff;
+  margin: 0;
+}
+
+.export-success-description {
+  font-size: 0.95rem;
+  color: #d0d0d0;
+  line-height: 1.6;
+  text-align: center;
+  margin: 0 0 1.5rem 0;
+}
+
+.export-success-modal .modal-actions {
+  justify-content: center;
+}
+

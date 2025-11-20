@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import "./App.css";
+import ImportVaultScreen from "./screens/ImportVaultScreen";
 import MasterPasswordSetupScreen from "./screens/MasterPasswordSetupScreen";
 import VaultScreen from "./screens/VaultScreen";
 import WelcomeBackScreen from "./screens/WelcomeBackScreen";
@@ -65,6 +66,24 @@ function App() {
     setScreen("vault");
   };
 
+  const handleVaultImported = (vault: VaultContext) => {
+    setExistingVaults((prev) => {
+      if (prev.some((entry) => entry.path === vault.path)) {
+        return prev;
+      }
+      return [
+        ...prev,
+        {
+          path: vault.path,
+          vaultName: vault.data.vaultName,
+        },
+      ];
+    });
+    setActiveVault(vault);
+    setActiveFolder(null);
+    setScreen("vault");
+  };
+
   const handleVaultUnlocked = (vault: VaultContext) => {
     setActiveVault(vault);
     setActiveFolder(null);
@@ -98,6 +117,12 @@ function App() {
     setScreen("welcome");
   };
 
+  const handleVaultExit = () => {
+    setActiveVault(null);
+    setActiveFolder(null);
+    setScreen(existingVaults.length > 0 ? "welcomeBack" : "welcome");
+  };
+
   if (screen === null) {
     return (
       <main className="container">
@@ -111,6 +136,12 @@ function App() {
       <AnimatePresence mode="wait">
         {screen === "welcome" && (
           <motion.div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
             key="welcome"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -119,6 +150,7 @@ function App() {
           >
             <WelcomeScreen
               onGetStarted={() => setScreen("masterPasswordSetup")}
+              onImportVault={() => setScreen("importVault")}
             />
             {initError && (
               <p className="submit-feedback error landing-error">{initError}</p>
@@ -160,6 +192,21 @@ function App() {
           </motion.div>
         )}
 
+        {screen === "importVault" && (
+          <motion.div
+            key="importVault"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3 }}
+          >
+            <ImportVaultScreen
+              onVaultImported={handleVaultImported}
+              onBack={goToLanding}
+            />
+          </motion.div>
+        )}
+
         {screen === "vault" && activeVault && (
           <motion.div
             key="vault"
@@ -179,6 +226,7 @@ function App() {
               }}
               activeFolder={activeFolder}
               onFolderClose={() => setActiveFolder(null)}
+              onExit={handleVaultExit}
             />
           </motion.div>
         )}

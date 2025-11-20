@@ -3,9 +3,13 @@ import "../css/screens/WelcomeScreen.css";
 
 interface WelcomeScreenProps {
   onGetStarted: () => void;
+  onImportVault: () => void;
 }
 
-export default function WelcomeScreen({ onGetStarted }: WelcomeScreenProps) {
+export default function WelcomeScreen({
+  onGetStarted,
+  onImportVault,
+}: WelcomeScreenProps) {
   return (
     <>
       <motion.h1
@@ -74,6 +78,7 @@ export default function WelcomeScreen({ onGetStarted }: WelcomeScreenProps) {
             whileHover={{ scale: 1.05, backgroundColor: "#e5e5e5" }}
             whileTap={{ scale: 0.98 }}
             transition={{ duration: 0.2 }}
+            onClick={onImportVault}
           >
             Import Vault
           </motion.button>

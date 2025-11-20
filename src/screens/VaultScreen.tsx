@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import AddCredentialModal from "../components/AddCredentialModal";
 import CreateFolderModal from "../components/CreateFolderModal";
+import ExportSuccessModal from "../components/ExportSuccessModal";
 import FolderPinModal from "../components/FolderPinModal";
 import FolderSection from "../components/FolderSection";
 import VaultSection from "../components/VaultSection";
@@ -25,6 +26,7 @@ interface VaultScreenProps {
   onFolderOpen: (folder: VaultFolder) => void;
   activeFolder: VaultFolder | null;
   onFolderClose: () => void;
+  onExit: () => void;
 }
 
 export default function VaultScreen({
@@ -35,6 +37,7 @@ export default function VaultScreen({
   onFolderOpen,
   activeFolder,
   onFolderClose,
+  onExit,
 }: VaultScreenProps) {
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
@@ -44,10 +47,8 @@ export default function VaultScreen({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
-  const [exportFeedback, setExportFeedback] = useState<{
-    type: "success" | "error";
-    message: string;
-  } | null>(null);
+  const [isExportSuccessOpen, setIsExportSuccessOpen] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const [deletingFolderId, setDeletingFolderId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isCredentialModalOpen, setIsCredentialModalOpen] = useState(false);
@@ -262,23 +263,22 @@ export default function VaultScreen({
   const handleExportVault = async () => {
     if (isExporting) return;
     setIsExporting(true);
-    setExportFeedback(null);
+    setExportError(null);
     try {
       const exported = await exportVaultFile(vaultPath);
       if (exported) {
-        setExportFeedback({
-          type: "success",
-          message: "Vault exported successfully.",
-        });
+        setIsExportSuccessOpen(true);
       }
+      // If user cancelled, silently return
     } catch (err) {
-      console.error(err);
+      console.error("Export vault error:", err);
       const message =
-        err instanceof Error ? err.message : "Unable to export vault.";
-      setExportFeedback({
-        type: "error",
-        message,
-      });
+        err instanceof Error
+          ? err.message
+          : typeof err === "string"
+          ? err
+          : "Unable to export vault. Please try again.";
+      setExportError(message);
     } finally {
       setIsExporting(false);
     }
@@ -314,15 +314,22 @@ export default function VaultScreen({
             {isExporting ? "Exporting..." : "Export Vault"}
           </motion.button>
         </div>
-      </div>
-      {exportFeedback && (
-        <div
-          className={`vault-export-feedback ${
-            exportFeedback.type === "error" ? "error" : "success"
-          }`}
+        <motion.button
+          type="button"
+          className="exit-vault-button"
+          onClick={onExit}
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.4 }}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          aria-label="Exit vault"
         >
-          {exportFeedback.message}
-        </div>
+          Exit
+        </motion.button>
+      </div>
+      {exportError && (
+        <div className="vault-export-feedback error">{exportError}</div>
       )}
 
       <div className="vault-overview">
@@ -418,6 +425,11 @@ export default function VaultScreen({
           onClose={() => setIsViewCredentialOpen(false)}
         />
       )}
+
+      <ExportSuccessModal
+        isOpen={isExportSuccessOpen}
+        onClose={() => setIsExportSuccessOpen(false)}
+      />
     </motion.section>
   );
 }

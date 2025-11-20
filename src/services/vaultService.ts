@@ -8,6 +8,8 @@ import {
   DeleteCredentialPayload,
   DeleteFolderPayload,
   DeleteVaultPayload,
+  ImportVaultPayload,
+  ImportVaultResponse,
   OpenVaultPayload,
   VaultData,
   VaultSummary,
@@ -73,25 +75,34 @@ export async function deleteVault({ path }: DeleteVaultPayload): Promise<void> {
 }
 
 export async function exportVaultFile(path: string): Promise<boolean> {
-  const destination = await save({
-    defaultPath: path,
-    filters: [
-      {
-        name: "PEKA Vault",
-        extensions: ["peka"],
-      },
-    ],
-  });
+  try {
+    // Extract just the filename from the full path
+    const pathParts = path.split(/[/\\]/);
+    const filename = pathParts[pathParts.length - 1] || "vault.peka";
 
-  if (!destination) {
-    return false;
+    const destination = await save({
+      defaultPath: filename,
+      filters: [
+        {
+          name: "PEKA Vault",
+          extensions: ["peka"],
+        },
+      ],
+    });
+
+    if (!destination) {
+      return false;
+    }
+
+    await invoke<void>("export_vault_file", {
+      sourcePath: path,
+      destinationPath: destination,
+    });
+    return true;
+  } catch (error) {
+    console.error("Export error:", error);
+    throw error;
   }
-
-  await invoke<void>("export_vault_file", {
-    sourcePath: path,
-    destinationPath: destination,
-  });
-  return true;
 }
 
 export async function deleteFolder({
@@ -135,5 +146,17 @@ export async function deleteCredential({
     masterPassword,
     folderId,
     credentialId,
+  });
+}
+
+export async function importVault({
+  sourcePath,
+  vaultName,
+  masterPassword,
+}: ImportVaultPayload): Promise<ImportVaultResponse> {
+  return invoke<ImportVaultResponse>("import_vault", {
+    sourcePath,
+    vaultName,
+    masterPassword,
   });
 }

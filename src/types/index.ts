@@ -2,8 +2,7 @@ export type Screen =
   | "welcome"
   | "welcomeBack"
   | "masterPasswordSetup"
-  | "vault"
-  | "folder";
+  | "vault";
 
 export interface ValidationResult {
   isValid: boolean;
@@ -72,4 +71,30 @@ export interface VerifyFolderPinPayload {
   masterPassword: string;
   folderId: string;
   pin: string;
+}
+
+export interface DeleteVaultPayload {
+  path: string;
+}
+
+export interface DeleteFolderPayload {
+  path: string;
+  masterPassword: string;
+  folderId: string;
+}
+
+export interface DeleteCredentialPayload {
+  path: string;
+  masterPassword: string;
+  folderId: string;
+  credentialId: string;
+}
+
+export interface AddCredentialPayload {
+  path: string;
+  masterPassword: string;
+  folderId: string;
+  identifier: string;
+  username: string;
+  password: string;
 }

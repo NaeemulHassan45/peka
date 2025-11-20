@@ -1,7 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import "./App.css";
-import FolderScreen from "./screens/FolderScreen";
 import MasterPasswordSetupScreen from "./screens/MasterPasswordSetupScreen";
 import VaultScreen from "./screens/VaultScreen";
 import WelcomeBackScreen from "./screens/WelcomeBackScreen";
@@ -44,6 +43,7 @@ function App() {
   }, []);
 
   const goToLanding = () => {
+    setActiveFolder(null);
     setScreen(existingVaults.length > 0 ? "welcomeBack" : "welcome");
   };
 
@@ -61,11 +61,13 @@ function App() {
       ];
     });
     setActiveVault(vault);
+    setActiveFolder(null);
     setScreen("vault");
   };
 
   const handleVaultUnlocked = (vault: VaultContext) => {
     setActiveVault(vault);
+    setActiveFolder(null);
     setScreen("vault");
   };
 
@@ -78,6 +80,22 @@ function App() {
           }
         : prev
     );
+    setActiveFolder((prevFolder) => {
+      if (!prevFolder) {
+        return prevFolder;
+      }
+      const updatedFolder = data.folders.find(
+        (folder) => folder.id === prevFolder.id
+      );
+      return updatedFolder ?? null;
+    });
+  };
+
+  const handleVaultDeleted = (path: string) => {
+    setExistingVaults((prev) => prev.filter((vault) => vault.path !== path));
+    setActiveVault(null);
+    setActiveFolder(null);
+    setScreen("welcome");
   };
 
   if (screen === null) {
@@ -119,6 +137,7 @@ function App() {
             <WelcomeBackScreen
               vaults={existingVaults}
               onUnlock={handleVaultUnlocked}
+              onVaultDeleted={handleVaultDeleted}
             />
             {initError && (
               <p className="submit-feedback error landing-error">{initError}</p>
@@ -144,6 +163,7 @@ function App() {
         {screen === "vault" && activeVault && (
           <motion.div
             key="vault"
+            style={{ width: "100%", height: "100%" }}
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
@@ -156,26 +176,9 @@ function App() {
               onVaultUpdated={handleVaultUpdated}
               onFolderOpen={(folder) => {
                 setActiveFolder(folder);
-                setScreen("folder");
               }}
-            />
-          </motion.div>
-        )}
-
-        {screen === "folder" && activeFolder && activeVault && (
-          <motion.div
-            key="folder"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.3 }}
-          >
-            <FolderScreen
-              folder={activeFolder}
-              onBack={() => {
-                setActiveFolder(null);
-                setScreen("vault");
-              }}
+              activeFolder={activeFolder}
+              onFolderClose={() => setActiveFolder(null)}
             />
           </motion.div>
         )}

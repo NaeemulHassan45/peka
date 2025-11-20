@@ -429,6 +429,242 @@ async fn list_vaults() -> Result<Vec<VaultSummary>, String> {
         .map_err(|e| e.to_string())?
 }
 
+#[tauri::command]
+async fn delete_vault(path: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || delete_vault_inner(path))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+fn delete_vault_inner(path: String) -> Result<(), String> {
+    if path.trim().is_empty() {
+        return Err("Vault path is required".to_string());
+    }
+
+    let target_path = PathBuf::from(&path);
+    if !target_path.exists() {
+        return Err("Vault file not found".to_string());
+    }
+
+    let canonical_target =
+        target_path.canonicalize().map_err(|_| "Unable to resolve vault path".to_string())?;
+    let vault_dir = resolve_vault_directory()?;
+    let canonical_vault_dir =
+        vault_dir.canonicalize().unwrap_or(vault_dir.clone());
+
+    if !canonical_target.starts_with(&canonical_vault_dir) {
+        return Err("Vault path is invalid".to_string());
+    }
+
+    if canonical_target
+        .extension()
+        .and_then(|ext| ext.to_str())
+        != Some("peka")
+    {
+        return Err("Invalid vault file".to_string());
+    }
+
+    fs::remove_file(canonical_target).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+#[allow(non_snake_case)]
+async fn export_vault_file(sourcePath: String, destinationPath: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        export_vault_file_inner(sourcePath, destinationPath)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+fn export_vault_file_inner(source_path: String, destination_path: String) -> Result<(), String> {
+    if source_path.trim().is_empty() {
+        return Err("Source path is required".to_string());
+    }
+
+    if destination_path.trim().is_empty() {
+        return Err("Destination path is required".to_string());
+    }
+
+    let source = PathBuf::from(&source_path);
+    if !source.exists() {
+        return Err("Vault file not found".to_string());
+    }
+
+    let canonical_source =
+        source.canonicalize().map_err(|_| "Unable to resolve source path".to_string())?;
+    let vault_dir = resolve_vault_directory()?;
+    let canonical_vault_dir = vault_dir.canonicalize().unwrap_or(vault_dir.clone());
+
+    if !canonical_source.starts_with(&canonical_vault_dir) {
+        return Err("Vault path is invalid".to_string());
+    }
+
+    if canonical_source
+        .extension()
+        .and_then(|ext| ext.to_str())
+        != Some("peka")
+    {
+        return Err("Invalid vault file".to_string());
+    }
+
+    let destination = PathBuf::from(destination_path);
+    if let Some(parent) = destination.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+
+    fs::copy(canonical_source, destination).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+#[allow(non_snake_case)]
+async fn delete_folder(
+    path: String,
+    masterPassword: String,
+    folderId: String,
+) -> Result<VaultContents, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        delete_folder_inner(&path, &masterPassword, &folderId)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+fn delete_folder_inner(
+    path: &str,
+    master_password: &str,
+    folder_id: &str,
+) -> Result<VaultContents, String> {
+    let (vault_file, mut payload) = decrypt_vault(path, master_password)?;
+
+    let position = payload
+        .folders
+        .iter()
+        .position(|folder| folder.id == folder_id)
+        .ok_or_else(|| "Folder not found".to_string())?;
+
+    payload.folders.remove(position);
+
+    let updated_file = encrypt_payload(&payload, master_password, Some(&vault_file.kdf))?;
+    let vault_json = serde_json::to_string_pretty(&updated_file).map_err(|e| e.to_string())?;
+    fs::write(path, vault_json).map_err(|e| e.to_string())?;
+
+    Ok(payload_to_public(&payload))
+}
+
+#[tauri::command]
+#[allow(non_snake_case)]
+async fn delete_credential(
+    path: String,
+    masterPassword: String,
+    folderId: String,
+    credentialId: String,
+) -> Result<VaultContents, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        delete_credential_inner(&path, &masterPassword, &folderId, &credentialId)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+fn delete_credential_inner(
+    path: &str,
+    master_password: &str,
+    folder_id: &str,
+    credential_id: &str,
+) -> Result<VaultContents, String> {
+    let (vault_file, mut payload) = decrypt_vault(path, master_password)?;
+    let folder = payload
+        .folders
+        .iter_mut()
+        .find(|folder| folder.id == folder_id)
+        .ok_or_else(|| "Folder not found".to_string())?;
+
+    let position = folder
+        .credentials
+        .iter()
+        .position(|cred| cred.id == credential_id)
+        .ok_or_else(|| "Credential not found".to_string())?;
+
+    folder.credentials.remove(position);
+    folder.updated_at = Utc::now().to_rfc3339();
+
+    let updated_file = encrypt_payload(&payload, master_password, Some(&vault_file.kdf))?;
+    let vault_json = serde_json::to_string_pretty(&updated_file).map_err(|e| e.to_string())?;
+    fs::write(path, vault_json).map_err(|e| e.to_string())?;
+
+    Ok(payload_to_public(&payload))
+}
+
+#[tauri::command]
+#[allow(non_snake_case)]
+async fn add_credential(
+    path: String,
+    masterPassword: String,
+    folderId: String,
+    identifier: String,
+    username: String,
+    password: String,
+) -> Result<VaultContents, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        add_credential_inner(
+            &path,
+            &masterPassword,
+            &folderId,
+            identifier,
+            username,
+            password,
+        )
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+fn add_credential_inner(
+    path: &str,
+    master_password: &str,
+    folder_id: &str,
+    identifier: String,
+    username: String,
+    password: String,
+) -> Result<VaultContents, String> {
+    if identifier.trim().is_empty() {
+        return Err("Username or email is required.".to_string());
+    }
+
+    if password.is_empty() {
+        return Err("Password is required.".to_string());
+    }
+
+    let (vault_file, mut payload) = decrypt_vault(path, master_password)?;
+    let folder = payload
+        .folders
+        .iter_mut()
+        .find(|folder| folder.id == folder_id)
+        .ok_or_else(|| "Folder not found".to_string())?;
+
+    let now = Utc::now().to_rfc3339();
+    let credential = StoredCredential {
+        id: Uuid::new_v4().to_string(),
+        title: identifier,
+        username,
+        password,
+        notes: None,
+        created_at: now.clone(),
+        updated_at: now.clone(),
+    };
+
+    folder.credentials.push(credential);
+    folder.updated_at = now.clone();
+
+    let updated_file = encrypt_payload(&payload, master_password, Some(&vault_file.kdf))?;
+    let vault_json = serde_json::to_string_pretty(&updated_file).map_err(|e| e.to_string())?;
+    fs::write(path, vault_json).map_err(|e| e.to_string())?;
+
+    Ok(payload_to_public(&payload))
+}
+
 fn list_vaults_inner() -> Result<Vec<VaultSummary>, String> {
     let base_dir = resolve_vault_directory()?;
     if !base_dir.exists() {
@@ -515,13 +751,19 @@ fn verify_folder_pin_inner(
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             greet,
             create_vault,
             open_vault,
             create_folder,
             list_vaults,
-            verify_folder_pin
+            verify_folder_pin,
+            delete_vault,
+            export_vault_file,
+            delete_folder,
+            add_credential,
+            delete_credential
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

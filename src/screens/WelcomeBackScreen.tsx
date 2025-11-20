@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { openVault } from "../services/vaultService";
+import { deleteVault, openVault } from "../services/vaultService";
 import { VaultContext, VaultSummary } from "../types";
 import vaultIcon from "../assets/vault.svg";
 import "../css/screens/WelcomeBackScreen.css";
@@ -8,16 +8,20 @@ import "../css/screens/WelcomeBackScreen.css";
 interface WelcomeBackScreenProps {
   vaults: VaultSummary[];
   onUnlock: (vault: VaultContext) => void;
+  onVaultDeleted: (path: string) => void;
 }
 
 export default function WelcomeBackScreen({
   vaults,
   onUnlock,
+  onVaultDeleted,
 }: WelcomeBackScreenProps) {
   const vault = vaults[0]; // Only one vault allowed
   const [masterPassword, setMasterPassword] = useState("");
   const [isUnlocking, setIsUnlocking] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const handleUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,6 +54,25 @@ export default function WelcomeBackScreen({
       setError(message);
     } finally {
       setIsUnlocking(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!vault || isDeleting) {
+      return;
+    }
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteVault({ path: vault.path });
+      onVaultDeleted(vault.path);
+    } catch (err) {
+      console.error(err);
+      const message =
+        err instanceof Error ? err.message : "Failed to delete vault";
+      setDeleteError(message);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -143,6 +166,36 @@ export default function WelcomeBackScreen({
           )}
         </motion.button>
       </motion.form>
+
+      <div className="welcome-back-actions">
+        {deleteError && (
+          <motion.div
+            className="submit-feedback error"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            transition={{ duration: 0.3 }}
+          >
+            {deleteError}
+          </motion.div>
+        )}
+        <motion.button
+          type="button"
+          className="delete-vault-button"
+          onClick={handleDelete}
+          disabled={!vault || isUnlocking || isDeleting}
+          whileHover={
+            !isDeleting && !isUnlocking && vault
+              ? { scale: 1.02, backgroundColor: "#2a0000" }
+              : {}
+          }
+          whileTap={
+            !isDeleting && !isUnlocking && vault ? { scale: 0.98 } : {}
+          }
+          transition={{ duration: 0.15, ease: "easeOut" }}
+        >
+          {isDeleting ? "Deleting..." : "Delete Vault"}
+        </motion.button>
+      </div>
     </div>
   );
 }

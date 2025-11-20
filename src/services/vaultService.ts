@@ -1,8 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
+import { save } from "@tauri-apps/plugin-dialog";
 import {
+  AddCredentialPayload,
   CreateFolderPayload,
   CreateVaultPayload,
   CreateVaultResponse,
+  DeleteCredentialPayload,
+  DeleteFolderPayload,
+  DeleteVaultPayload,
   OpenVaultPayload,
   VaultData,
   VaultSummary,
@@ -60,5 +65,75 @@ export async function verifyFolderPin({
     masterPassword,
     folderId,
     pin,
+  });
+}
+
+export async function deleteVault({ path }: DeleteVaultPayload): Promise<void> {
+  return invoke<void>("delete_vault", { path });
+}
+
+export async function exportVaultFile(path: string): Promise<boolean> {
+  const destination = await save({
+    defaultPath: path,
+    filters: [
+      {
+        name: "PEKA Vault",
+        extensions: ["peka"],
+      },
+    ],
+  });
+
+  if (!destination) {
+    return false;
+  }
+
+  await invoke<void>("export_vault_file", {
+    sourcePath: path,
+    destinationPath: destination,
+  });
+  return true;
+}
+
+export async function deleteFolder({
+  path,
+  masterPassword,
+  folderId,
+}: DeleteFolderPayload): Promise<VaultData> {
+  return invoke<VaultData>("delete_folder", {
+    path,
+    masterPassword,
+    folderId,
+  });
+}
+
+export async function addCredential({
+  path,
+  masterPassword,
+  folderId,
+  identifier,
+  username,
+  password,
+}: AddCredentialPayload): Promise<VaultData> {
+  return invoke<VaultData>("add_credential", {
+    path,
+    masterPassword,
+    folderId,
+    identifier,
+    username,
+    password,
+  });
+}
+
+export async function deleteCredential({
+  path,
+  masterPassword,
+  folderId,
+  credentialId,
+}: DeleteCredentialPayload): Promise<VaultData> {
+  return invoke<VaultData>("delete_credential", {
+    path,
+    masterPassword,
+    folderId,
+    credentialId,
   });
 }

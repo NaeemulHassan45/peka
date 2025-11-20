@@ -85,6 +85,31 @@
   gap: 1rem;
 }
 
+.delete-vault-button {
+  width: 100%;
+  padding: 0.9rem 1.25rem;
+  border-radius: 8px;
+  border: 1px solid #551111;
+  background-color: #1a0000;
+  color: #ffaaaa;
+  font-size: 0.95rem;
+  font-family: "Poppins", sans-serif;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.delete-vault-button:hover:not(:disabled) {
+  background-color: #2a0000;
+  border-color: #aa3333;
+  color: #ffffff;
+}
+
+.delete-vault-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .welcome-back-secondary {
   padding: 0.75rem 1.4rem;
   border-radius: 6px;
